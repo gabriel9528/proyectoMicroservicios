@@ -1,0 +1,26 @@
+EUREKA SERVER
+
+Dependencias:
+- Eureka Server
+- Config Client
+
+en el main tenemos que ponerlo como @EnableEurekaServer
+Modificamos en el "application.properties" -> "bootstrap.yml"
+
+Luego hacer las modificaciones en settings, en projectStructure, en "gradle-wrappe.properties"(reemplazar: gradle-6.6-bin.zip) y modificar el build.gradle: 
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '2.3.2.RELEASE'
+	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+}
+
+java {
+	sourceCompatibility = JavaVersion.VERSION_11
+	targetCompatibility = JavaVersion.VERSION_11
+}
+
+ext {
+	set('springCloudVersion', "Hoxton.SR7")
+}
+
+Y correr en el localhost:8099
