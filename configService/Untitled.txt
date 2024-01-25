@@ -1,0 +1,125 @@
+CONFIGSERVICE
+En el archivo configService accedemos al "config-data" que se encuentra en nuestro repositorio en donde podemos encontrar los 3 archivos de configuracion inicial de nuestros 3 microservicios.
+
+Primeramente tenemos que crear nuestro archivo donde almacenemos todas nuestras configuraciones de nuestros microservicios en este caso, "productService.yml", "customerService.yml" y "shoppingService.yml" donde cada uno es de tipo: 
+8093->shopppingService, 8092->customerService, 8091->productService
+Server:
+  port: 8093
+
+Spring:
+  h2:
+    console:
+      enabled: true
+
+  datasource:
+    url: jdbc:h2:mem:productDB;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    platform: h2
+    username: sa
+    password:
+
+  jpa:
+    defer-datasource-initialization: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        show_sql: true
+        use_sql_comments: false
+        format_sql: false
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} ${LOG_LEVEL_PATTERN:-%5p} %m%n"
+
+luego modificamos cada uno de nuestros microservicios en su apartado de "application.yml" a "bootstrap.yml" con el siguiente codigo en reemplazo:
+
+name: productService, customerService y shoppingService que hacen referencia a nuestros archivos de configuracion en "config-data"
+
+spring:
+  application:
+    name: productService
+  cloud:
+    config:
+      uri: http://localhost:8081
+      username: root
+      password: s3cr3t
+
+luego para cada archivo de microservicio, en nuestro archivo de gradle.build: modificamos el apartado de ext:
+ext {
+	set('springCloudVersion', "Hoxton.SR7")
+}
+y descomentamos nuestra dependencia: "implementation 'org.springframework.cloud:spring-cloud-starter-config'"
+
+
+Seguidamente en nuestro archivo: "configService":
+
+creamos nuestro archivo "bootstrap.yml", con el siguiente codigo:
+server:
+  port: 8081
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://github.com/gabriel9528/proyectoMicroservicios.git
+          searchPaths: config-data
+          username: ${GIT_USER}
+          password: ${GIT_PASSWORD}
+          default-label: "01-Rest"
+  security:
+    user:
+      name: root
+      password: s3cr3t
+
+ no olvidar el usuario(gabrielferv95@gmail.com) y contraseña(T3csup8107#) de conexion con nuestro gitHub
+y en nuestro caso el default--laber(la rama principal de mi repositorio): "01-Rest"
+
+por ultimo en nuestro POSTMAN accedemos a las rutas de confiuracion de cada microservicio:
+http://root:s3cr3t@localhost:8081/customerService/default
+http://root:s3cr3t@localhost:8081/productService/default
+http://root:s3cr3t@localhost:8081/shoppingService/default
+
+
+obtenemos: 
+{
+    "name": "customerService",
+    "profiles": [
+        "default"
+    ],
+    "label": null,
+    "version": "cfe8f5fb50b88291d549ae4d8325c9b2913fd740",
+    "state": null,
+    "propertySources": [
+        {
+            "name": "https://github.com/gabriel9528/proyectoMicroservicios.git/config-data/customerService.yml",
+            "source": {
+                "Server.port": 8092,
+                "Spring.h2.console.enabled": true,
+                "Spring.datasource.url": "jdbc:h2:mem:productDB;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+                "Spring.datasource.driverClassName": "org.h2.Driver",
+                "Spring.datasource.platform": "h2",
+                "Spring.datasource.username": "sa",
+                "Spring.datasource.password": "",
+                "Spring.jpa.defer-datasource-initialization": true,
+                "Spring.jpa.show-sql": true,
+                "Spring.jpa.hibernate.ddl-auto": "update",
+                "Spring.jpa.database-platform": "org.hibernate.dialect.H2Dialect",
+                "Spring.jpa.properties.hibernate.show_sql": true,
+                "Spring.jpa.properties.hibernate.use_sql_comments": false,
+                "Spring.jpa.properties.hibernate.format_sql": false,
+                "logging.pattern.console": "%d{yyyy-MM-dd HH:mm:ss} ${LOG_LEVEL_PATTERN:-%5p} %m%n"
+            }
+        }
+    ]
+}
+
+ y por ultimo accedemos en nuestro POSTMAN a cada microservicio, ya que tendriamos acceso a traves de nuestro "conig-data":
+
+http://localhost:8092/customers
+http://localhost:8091/products
+http://localhost:8093/invoices
+
+
