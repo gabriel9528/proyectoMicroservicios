@@ -7,20 +7,84 @@ Dependencias:
 en el main tenemos que ponerlo como @EnableEurekaServer
 Modificamos en el "application.properties" -> "bootstrap.yml"
 
-Luego hacer las modificaciones en settings, en projectStructure, en "gradle-wrappe.properties"(reemplazar: gradle-6.6-bin.zip) y modificar el build.gradle: 
-plugins {
-	id 'java'
-	id 'org.springframework.boot' version '2.3.2.RELEASE'
-	id 'io.spring.dependency-management' version '1.0.9.RELEASE'
-}
+	Luego hacer las modificaciones en settings, en projectStructure, en "gradle-wrappe.properties"(reemplazar: 	gradle-6.6-bin.zip) y modificar el build.gradle: 
+	plugins {
+		id 'java'
+		id 'org.springframework.boot' version '2.3.2.RELEASE'
+		id 'io.spring.dependency-management' version '1.0.9.RELEASE'
+	}
 
-java {
-	sourceCompatibility = JavaVersion.VERSION_11
-	targetCompatibility = JavaVersion.VERSION_11
-}
+	java {
+		sourceCompatibility = JavaVersion.VERSION_11
+		targetCompatibility = JavaVersion.VERSION_11
+	}
 
-ext {
-	set('springCloudVersion', "Hoxton.SR7")
-}
+	ext {
+		set('springCloudVersion', "Hoxton.SR7")
+	}
 
-Y correr en el localhost:8099
+
+- Luego agregamos la configuracion de nuestro EurekaServer en config-data y creamos nuestro archivo registerService.yml
+y registramos esta configuracion: 
+
+server:
+  port: 8099
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    registerWithEureka: false
+    fetchRegistry: false
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+
+- Seguidamente tenemos que subir la configuracion a nuestro repositorio es decir actualizar nuestro repositorio git, para que nuestra nueva configuracion de EurekaServer pueda ser accedida.
+
+- Reiniciamos nuestra aplicacion de cofigService para que pueda actualizar las nuevas configuraciones
+
+-Vamos a POSTMAN y consultamos la configuracion de nuestro eurekaServer: http://root:s3cr3t@localhost:8081/registerService/default, y revisamos que este nuestro archivo de configuracion eureka:
+
+  "eureka.client.serviceUrl.defaultZone": "http://${eureka.instance.hostname}:${server.port}/eureka/"
+
+-Ahora nos dirigimos a nuestra aplicacion de "registerService" y modificamos nuestro archivo de configuracion "application-properties" -> "bootstrap.yml", y le pasamos la siguiente configuracion: 
+
+spring:
+  application:
+    name: registerService
+  cloud:
+    config:
+      uri: http://localhost:8081
+      username: root
+      password: s3cr3t
+
+- Luego vamos al main y lo marcamos como @EnableEurekaServer
+- Ahora vamos a correr nuestra aplicacion de registerService
+- Verificamos que nuestro Eureka Service este levantado en el localhost:8099
+         
+
+
+
+Microservicios:
+
+1) Actualizar el config-data de cada uno de nuestros microservicios: 
+agregamos: 
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8099/eureka/
+
+2)Actualizamos nuestro repositorio
+
+3)Reiniciar el configService para que carguen las nuevas configuraciones de los microservicios
+
+4)Ir a cada uno de los microservicios y habilitar el: 
+implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+Luego ir a la clase principal y marcarlo como cliente Eureka:
+@EnableEurekaClient
+Y correr la aplicacion
+
+5)Ahora vamos al POSTMAN y verificamos que nuestra configuracion de producService tenga nuestra configuracion de eureka
+http://root:s3cr3t@localhost:8081/productService/default ->  "eureka.client.serviceUrl.defaultZone": "http://localhost:8099/eureka/"
+
+6)Actualizar el localhost:8099, para ver que nuestros servicios esten activos

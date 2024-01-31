@@ -1,0 +1,96 @@
+FEIGN CLIENT
+
+Sirve para la comunicacion entre microservicios, libreria para generar clientes de servicio REST, de manera declarativa integrandose con Eureka, histick y Ribbon(balanceo de carga).
+
+- Vamos a modificar en el "InvoiceServiceImpl" el metodo "getInvoice" -> para obtener los datos del cliente y los datos de cada factura 
+y para actualizar el stock de los productos al momento de crear una factura vamos a modificar en el "InvoiceServiceImpl" -> el metodo "createInvoice".
+
+1)Creamos un paquete llamado "model" donde estaran las clases que haran el correspondiente llamado tanto a nuestro microservivio de "Product" y de "Customer", aqui creamos las clases de: "Category", "Product", "Region", "Customer".
+
+2)Seguidamente nos dirigimos a las entidades de cada microservicio(Product y Customer) y traemos solo sus propiedades y las copiamos en nuestra nueva clase de la respectiva entidad creada en mi microservicio de"shoppingService" en la carpeta "model" y marcamos cada entidad nueva en "shoppingService" con @Data
+
+3)Ahora nos dirigimos a nuestra entidad propia de "Invoice" en "shoppingService" para referenciar cada clase creada(que en si va a refernciar a mi microservicio) y lo marcamos como @Transient(para que no se inserte en nuestra base de datos:
+en "Invoice" ->     @Transient
+    private Customer customer;
+y en "InvoiceItem" ->     @Transient
+    private Product product;
+
+4) Ahora vamos a traer la dependencia de Feign para poder generar los clientes para poder conectarnos a los microservicios correspondientes en este caso de "Product" y "Customer", en el "build.gradle" de "shoppingService" agregamos la dependencia de Feign: implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'.
+
+5) Ahora vamos a crear un paquete de nombre "client" donde iremos creando los clientes de Feign para conectarnos a los microservicios
+	Dentro de esta carpeta de "client" vamos a crear los clientes que seran repositorios: "CustomerClient" 
+	Ahora vamos a nuestro microservicio de "customerService" al "customerRest"(en Controller) y lo primer que hacemos 	es copiar el: @RequestMapping("/customers") y luego traemos el metodo con el cual vamos a consultar los clientes y 	finalmente vamos a decorar nuestro "customerClient" como @FeignClient(name="customerService") y con este "name" le 	indicamos que vamos a consumir nuestro "customerService".
+
+	Ahora vamos a nuestro microservicio de "productService" al "ProductController" y lo que hacemos es copiar el: 	@RequestMapping (value = "/products") y luego copiamos el metodo con el cual vamos a consultar el product:
+
+ 	@GetMapping(value = "/{id}")
+    	public ResponseEntity<Product> getProduct(@PathVariable("id") Long id);
+ 
+	y luego traemos el metodo para actualizar el stock de los productos: 
+
+	@PutMapping (value = "/{id}/stock")
+    	public ResponseEntity<Product> updateStockProduct(@PathVariable  Long id ,@RequestParam(name = "quantity", required 	= true) Double quantity)
+
+	Y al final decorar la clase como un cliente Feign: @FeignClient(name="productService") para que consuma nuestro 	microservicio de "productService"
+
+6) Ahora debemos activar en nuestro proyecto para que se puedan usar los clientes de Feign y esto lo hacemos dirigiendonos a nuestro main y marcandolo como: @EnableFeignClients
+
+7) Ahora si modificamos los metodos de nuestro servicio en "shoppingService" en "InvoiceServiceImpl" para actualizar el stock y actualizar el cliente; primero hacemos la inyeccion de dependencias de nuestros clientes:
+
+	@Autowired
+    	CustomerClient customerClient;
+
+   	@Autowired
+    	ProductClient productClient;
+
+	Modificamos el createInvoice:
+	
+	@Override
+    	public Invoice createInvoice(Invoice invoice) {
+        Invoice invoiceDB = invoiceRepository.findByNumberInvoice ( invoice.getNumberInvoice () );
+        if (invoiceDB !=null){
+            return  invoiceDB;
+        }
+        invoice.setState("CREATED");
+        invoiceDB = invoiceRepository.save(invoice);
+        invoiceDB.getItems().forEach( invoiceItem -> {
+            productClient.updateStockProduct( invoiceItem.getProductId(), invoiceItem.getQuantity() * -1);
+        });
+
+        return invoiceDB;
+
+	Modificamos el getInvoice:
+
+	@Override
+    	public Invoice getInvoice(Long id) {
+        Invoice invoice = invoiceRepository.findById(id).orElse(null);
+        if(invoice != null){
+            Customer customer = customerClient.getCustomer(invoice.getCustomerId()).getBody();
+            invoice.setCustomer(customer);
+            List<InvoiceItem> listItems = invoice.getItems().stream().map(invoiceItem -> {
+                Product product = productClient.getProduct(invoiceItem.getProductId()).getBody();
+                invoiceItem.setProduct(product);
+                return invoiceItem;
+            }).collect(Collectors.toList());
+            invoice.setItems(listItems);
+        }
+        return invoice;
+
+
+    }
+	
+    }
+
+8) Ahora levantamos el servicio de "configService" y "registerService", luego el "customerService", luego el "productService" y luego el "shoppingService", y comoprobamos en nuestro eurekaService si estan activos nuestros 3 microservicios: http://localhost:8099/
+
+9) Por ultimo probamos en nuestro localhost: 
+
+http://localhost:8091/products/1 -> comprobamos la cantidad inicial de nuestro stock
+http://localhost:8093/invoices -> al crear nuestra factura, estamos reduciendo el stock de dichos productos
+http://localhost:8091/products/1 -> volvemos a comprobar nuestro stock de nuestra factura
+
+
+
+
+
+

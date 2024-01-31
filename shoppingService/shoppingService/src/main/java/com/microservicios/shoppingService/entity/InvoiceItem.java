@@ -1,5 +1,6 @@
 package com.microservicios.shoppingService.entity;
 
+import com.microservicios.shoppingService.model.Product;
 import lombok.Data;
 
 import javax.persistence.*;
@@ -14,7 +15,7 @@ public class InvoiceItem  {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Positive(message = "El stock debe ser mayor que cero")
+
     private Double quantity;
     private Double  price;
 
@@ -25,6 +26,9 @@ public class InvoiceItem  {
     //generando un JSON, NO VA A SER REGISTRADO EN NUESTRA BASE DE DATOS
     @Transient
     private Double subTotal;
+
+    @Transient
+    private Product product;
     public Double getSubTotal(){
         if (this.price >0  && this.quantity >0 ){
             return this.quantity * this.price;

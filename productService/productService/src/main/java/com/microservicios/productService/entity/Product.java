@@ -25,7 +25,7 @@ public class Product {
     @NotEmpty(message = "El nombre no debe ser vacío")
     private String name;
     private String description;
-    @Positive(message = "El stock debe ser mayor que cero")
+
     private Double stock;
     private Double price;
     private String status;
