@@ -1,0 +1,67 @@
+HISTRYX(Tolerancia a fallos)
+
+1. En"shppingService" 
+Agregar estas dependencias al "build.gradle":
+implementation 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix'
+	//implementation 'org.springframework.cloud:spring-cloud-starter-netflix-hystrix-dashboard'
+	implementation (group: 'org.springframework.cloud', name: 'spring-cloud-netflix-hystrix-dashboard', version: '2.2.2.RELEASE')
+
+ y descomentar el: 
+implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+2. en el main de "shoppingServices" habilitar:
+@EnableHystrix
+@EnableHystrixDashboard
+
+3. Luego ir al "configData" y agregar en "shoppingServices"(esto es para habilitar el hystrix)y se habilita tambien el "actuator" para poder trabajar con el dashboard de Hystrix:
+Feign:
+  hystrix:
+    enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+
+4. Agregar los cambios al repositorio git para que puedan ser leidos por el archivo configService
+
+5. Crear en nuestro paquete de "Client" nuestro fallback de Customer(no olvidar decorarlo como component):
+
+   
+@Component
+public class CustomerHystrixFallbackFactory implements CustomerClient{
+    @Override
+    public ResponseEntity<Customer> getCustomer(long id) {
+        Customer customer = Customer.builder()
+                .firstName("none")
+                .lastName("none")
+                .email("none")
+                .photoUrl("none").build();
+        return ResponseEntity.ok(customer);
+    }
+}
+
+y luego modificamos nuestra interface "CustomeClient"
+
+@FeignClient(name="customerService", fallback = CustomerHystrixFallbackFactory.class)
+public interface CustomerClient {
+
+6. ejecutar con el comando "gradle bootRun" en la direccion de carpeta en el siguiente orden:
+- configService
+- registerService
+- customerService
+- productService
+ y en el IDE de intellijidea ejecutar el "shoppingService"
+
+7. Luego vamos a ingresar: http://localhost:8093/actuator/hystrix.stream para -> para verificar las peticiones que vamos a ir haciendo
+
+8. Vamos al POSTMAN y hacemos el envio de la ruta: localhost:8093/invoices/1 y verificamos en -> http://localhost:8093/actuator/hystrix.stream, para probar con este ejemplo: paramos el servicio "customerService" y vemos que la llamada a localhost:8093/invoices/1 ya no se cae el servicio, y vemos que nos devuelve esto:  "customer": {
+        "id": null,
+        "numberID": null,
+        "firstName": "none",
+        "lastName": "none",
+        "email": "none",
+        "photoUrl": "none",
+        "region": null,
+        "state": null
+    }
