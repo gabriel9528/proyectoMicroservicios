@@ -1,0 +1,66 @@
+GATEWAY
+
+1. Creamos nuestro proyecto en spring initializer con las siguientes dependencias:
+- Gateway
+- ConfigClient
+- Eureka Discovery Client
+y Actualizamos nuestro proyecto a gradle 6.6 y java 11
+
+2. Modificamos nuestro "application.properties" a "bootstrap.yml", y colocamos: 
+spring:
+  application:
+    name: registerService
+  cloud:
+    config:
+      uri: http://localhost:8081
+      username: root
+      password: s3cr3t
+
+3. Ahora nos dirigimos al "config-data" y creamos nuestro archivo: "gatewayService.yml" y le insertamos lo siguiente: 
+server:
+  port: 8080
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8099/eureka/
+
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      routes:
+        - id: customerService
+          uri: lb://customerService
+          predicates:
+            - Path=/customers/**
+        - id: productService
+          uri: lb://productService
+          predicates:
+            - Path=/products/**
+        - id: shoppingService
+          uri: lb://shoppingService
+          predicates:
+            - Path=/invoices/**
+
+4. Agregar los cambios a nuestro repositorio en git para que puedan ser reconocidos por nuestro configService
+
+5. Ahora vamos a nuestra clase principal y le ponemos @EnableEurekaClient
+@SpringBootApplication
+@EnableEurekaClient
+public class GatewayServiceApplication {
+
+6. Ahora levantamos nuestros servicios con "gradle bootRun" en cada ruta de nuestro proyecto:
+- Primero levantamos el "configService"
+- Luego levantamos el "registerService"
+- Seguidamente levantamos el "customerService"
+- Seguidamente levantamos el "productService"
+- Seguidamente levantamos el "shoppingService"
+- Por ultimo hacemos correr en nuestro intellijidea nuestra aplicacion "gatewayService"
+
+7. Por ultimo nos dirigimos a POSTMAN y verificamos la conexion de las llamadas de las APIs:
+localhost:8080/customers
+localhost:8080/products
+localhost:8080/invoices/1
